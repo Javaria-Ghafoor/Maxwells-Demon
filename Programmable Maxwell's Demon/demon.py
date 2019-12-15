@@ -169,9 +169,9 @@ rodlowerHpi = cylinder(pos=vector(0, -1.5 * H - Dia_axle / 2, 0.55 * R), radius=
                      axis=vector(0, 0, -0.45 * R), color=color.red)
 axle = cylinder(pos=vector(0, -4, 0), radius=Dia_axle / 2, axis=vector(0, 8, 0), color=color.white)
 
-# make the binary-reference sequence
 
-def make_bit(b:bool):
+def make_bit(b: bool):
+    # make the binary-reference sequence
     if b == False:
         barH = box(pos=vector(H / 2 + dr, H / 2 + H / 3, 0), size=vector(H, H / 4, dr), color=paddle_color)
         barV = box(pos=vector(H, H / 3, 0), size=vector(H / 4, -H, dr))
@@ -183,3 +183,103 @@ def make_bit(b:bool):
     return bitbar
 
 
+# make_bit(0)
+# make_bit(1)
+
+
+def decimal_converter(num):
+    while num > 1:
+        num /= 10
+    return num
+
+
+def binary_sequence(number: float = pi, digits=100):
+    whole, dec = str(number).split(".")
+    whole = int(whole)
+    dec = int(dec)
+    res = bin(whole).lstrip("0b")   # ignoring decimal place
+    whole_places = len(res)
+    dec_places = digits - whole_places
+    for i in range(dec_places):
+        whole, dec = str((decimal_converter(dec)) * 2).split(".")
+        dec = int(dec)
+        res += whole
+    res = int(res)
+    binary = []
+    for i in range(digits, 0, -1):
+        num = res // (10 ** (i - 1))
+        binary.append(num)
+        if (num == 1):
+            res = res - (10 ** (i - 1))
+    return binary
+
+
+# print(binary_sequence())
+B_S = binary_sequence()
+
+def true_angle(a):  # convert an angle to be between 0 and 2pi
+    a %= 2 * pi
+    if a < 0:
+        a += 2 * pi
+    Demon_theta.append(a)
+    return a
+
+
+dt = 0.01
+
+
+def displace_paddle(paddle, deltat):
+    dtheta = paddle.omega * deltat
+    if dtheta == 0:
+        return
+    thetai = paddle.theta
+    thetaf = thetai + dtheta
+    if thetaf >= 2 * pi or thetaf <= 0:
+        # if out of range?
+        paddle.omega = -paddle.omega        # direction swap
+        if dtheta > 0:
+            thetaf = 2 * pi - (thetaf - 2 * pi)
+        else:
+            thetaf = -thetaf
+    elif (thetai <= pi <= thetaf or thetaf <= pi <= thetai) and not (-H < paddle.pos.y < H):
+        # if collision with rods
+        paddle.omega = -paddle.omega        # direction swap
+        if dtheta > 0:
+            thetaf = pi - (thetaf - pi)
+        else:
+            thetaf = pi + (pi - thetaf)
+    paddle.rotate(angle=thetaf - thetai, axis=vector(0, 1, 0), origin=vector(0, 0, 0))
+    paddle.theta = thetaf
+
+
+def displace_demon(deltat):
+    dtheta = demon.omega * deltat
+    if dtheta == 0:
+        return
+    thetai = demon.theta
+    thetaf = thetai + dtheta
+    demon.rotate(angle=thetaf - thetai, axis=vector(0, 1, 0), origin=vector(0, 0, 0))
+    demon.theta = thetaf
+
+
+paddles = []
+pdy = 2 * H     # distance between paddles
+Npaddles = 20   # no of paddles
+theta0 = pi / 2
+omega0 = 0
+maxpaddley = 3 * H + Npaddles * pdy     # ??
+
+
+count = 0
+for y in arange(1.5 * H, maxpaddley + pdy / 2, pdy):  # create a set of paddles and bit bars
+    P = make_paddle()
+    P.pos.y = y
+    P.theta = theta0
+    P.omega = omega0
+    P.rotate(angle=P.theta, axis=vector(0, 1, 0), origin=vector(0, 0, 0))
+    paddles.append(P)
+    B = make_bit(B_S[count])
+    B.pos.y = y + H + H/3
+    count += 1
+    
+# some logical errors to be tackled and program to yet be completed
