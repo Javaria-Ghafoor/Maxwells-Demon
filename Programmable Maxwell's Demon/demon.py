@@ -85,8 +85,9 @@ def make_paddle():
     return paddle
 
 
-make_paddle()
-
+# make_paddle()
+# make_paddle().pos.y += H
+# make_paddle().pos.y += 2 * H
 
 def make_demon():
     # VPython 6 has an extrusion object unlike VPython 7 (which we're using)
@@ -135,6 +136,7 @@ def make_demon():
         quads.append(quad(v0=vibottom[n], v1=vobottom[n], v2=vobottom[n + 1], v3=vibottom[n + 1]))
         quads.append(quad(v0=vitop[n], v1=votop[n], v2=votop[n + 1], v3=vitop[n + 1]))
     quads.append(box(pos=vector(0, 0, -(R - Len_paddle / 2)), size=vector(dr, H, Len_paddle), color=color.orange))
+    quads.append(box(pos=vector(0, 0, (R - Len_paddle / 2)), size=vector(dr, H, Len_paddle), color=color.orange))
     box(pos=vector(0, -H / 2 - dr / 2, 0), size=vector(2.2 * R, dr, 2.2 * R), color=color.white, opacity=0.7)
     obj = compound(quads)
     obj.omega = 0
@@ -157,34 +159,34 @@ w = 0.05 * R
 # rod = cylinder(pos=vector(0, -4, -0.55 * R), radius=Dia_axle / 2, axis=vector(0, 8, 0), color=color.red)
 rodupperVo = cylinder(pos=vector(0, 1.5 * H, -0.55 * R), radius=Dia_axle / 2, axis=vector(0, 4, 0), color=color.red)
 rodupperHo = cylinder(pos=vector(0, 1.5 * H + Dia_axle / 2, -0.55 * R), radius=Dia_axle / 2,
-                       axis=vector(0, 0, 0.45 * R), color=color.red)
+                       axis=vector(0, 0, 0.35 * R), color=color.red)
 rodlowerVo = cylinder(pos=vector(0, -1.5 * H, -0.55 * R), radius=Dia_axle / 2, axis=vector(0, -4, 0), color=color.red)
 rodlowerHo = cylinder(pos=vector(0, -1.5 * H - Dia_axle / 2, -0.55 * R), radius=Dia_axle / 2,
-                     axis=vector(0, 0, 0.45 * R), color=color.red)
+                     axis=vector(0, 0, 0.35 * R), color=color.red)
 rodupperVpi = cylinder(pos=vector(0, 1.5 * H, 0.55 * R), radius=Dia_axle / 2, axis=vector(0, 4, 0), color=color.red)
 rodupperHpi = cylinder(pos=vector(0, 1.5 * H + Dia_axle / 2, 0.55 * R), radius=Dia_axle / 2,
-                       axis=vector(0, 0, -0.45 * R), color=color.red)
+                       axis=vector(0, 0, -0.35 * R), color=color.red)
 rodlowerVpi = cylinder(pos=vector(0, -1.5 * H, 0.55 * R), radius=Dia_axle / 2, axis=vector(0, -4, 0), color=color.red)
 rodlowerHpi = cylinder(pos=vector(0, -1.5 * H - Dia_axle / 2, 0.55 * R), radius=Dia_axle / 2,
-                     axis=vector(0, 0, -0.45 * R), color=color.red)
+                     axis=vector(0, 0, -0.35 * R), color=color.red)
 axle = cylinder(pos=vector(0, -4, 0), radius=Dia_axle / 2, axis=vector(0, 8, 0), color=color.white)
 
 
 def make_bit(b: bool):
     # make the binary-reference sequence
+    barH = box(pos=vector(H / 2 + dr, H / 2 + H / 3, 0), size=vector(H, H / 4, dr), color=paddle_color)
+    barV = box(pos=vector(H, H / 3, 0), size=vector(H / 4, -H, dr))
+    bitbar = compound([barH, barV])
     if b == False:
-        barH = box(pos=vector(H / 2 + dr, H / 2 + H / 3, 0), size=vector(H, H / 4, dr), color=paddle_color)
-        barV = box(pos=vector(H, H / 3, 0), size=vector(H / 4, -H, dr))
-        bitbar = compound([barH, barV])
+        bitbar.rotate(angle=pi/2, axis=vector(0, 1, 0), origin=vector(0, 0, 0))
     elif b == True:
-        barH = box(size=vector(-H / 2, H / 2 + H / 3, 0), color=paddle_color)
-        barV = box(pos=vector(-H, H / 3, 0), size=vector(-H / 4, -H, dr))
-        bitbar = compound([barH, barV])
+        bitbar.rotate(angle=-pi / 2, axis=vector(0, 1, 0), origin=vector(0, 0, 0))
     return bitbar
 
 
 # make_bit(0)
-# make_bit(1)
+# make_bit(1).pos.y += H
+# make_bit(0).pos.y += 2 * H
 
 
 def decimal_converter(num):
@@ -193,7 +195,7 @@ def decimal_converter(num):
     return num
 
 
-def binary_sequence(number: float = pi, digits=100):
+def binary_sequence(number: float = pi, digits=30):
     whole, dec = str(number).split(".")
     whole = int(whole)
     dec = int(dec)
@@ -214,7 +216,7 @@ def binary_sequence(number: float = pi, digits=100):
     return binary
 
 
-# print(binary_sequence())
+print(binary_sequence())
 B_S = binary_sequence()
 
 def true_angle(a):  # convert an angle to be between 0 and 2pi
@@ -263,23 +265,28 @@ def displace_demon(deltat):
 
 
 paddles = []
+bits = []
 pdy = 2 * H     # distance between paddles
 Npaddles = 20   # no of paddles
 theta0 = pi / 2
 omega0 = 0
 maxpaddley = 3 * H + Npaddles * pdy     # ??
 
-
 count = 0
 for y in arange(1.5 * H, maxpaddley + pdy / 2, pdy):  # create a set of paddles and bit bars
+    num = bool(B_S[count])
+    B = make_bit(num)
+    B.pos.y = y + H / 3 + dr
+    bits.append(B)
+    count += 1
     P = make_paddle()
     P.pos.y = y
     P.theta = theta0
     P.omega = omega0
-    P.rotate(angle=P.theta, axis=vector(0, 1, 0), origin=vector(0, 0, 0))
+    if num == False:
+        P.rotate(angle=-P.theta, axis=vector(0, 1, 0), origin=vector(0, 0, 0))
+    elif num == True:
+        P.rotate(angle=P.theta, axis=vector(0, 1, 0), origin=vector(0, 0, 0))
     paddles.append(P)
-    B = make_bit(B_S[count])
-    B.pos.y = y + H + H/3
-    count += 1
-    
-# some logical errors to be tackled and program to yet be completed
+
+# to be completed
