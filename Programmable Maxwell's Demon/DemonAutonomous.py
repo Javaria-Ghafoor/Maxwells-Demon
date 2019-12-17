@@ -325,11 +325,14 @@ def update_omega(obj):
 dy = H / 200  # how much to drop the axle for each iteration
 t = 0
 
+count = 0
 
 while True:
     rate(50)  # clamp to no more than 50 iterations per second
     collision = False
-    for p in paddles:
+    for i in range(len(paddles)):
+        p = paddles[i]
+        b = bits[i]
         update = True
         if -H < p.pos.y < H:
             if 0 < p.theta0 < pi:
@@ -368,17 +371,20 @@ while True:
             displace_paddle(p, dt)
             update_omega(p)
             p.pos.y -= dy
+            b.pos.y -= dy
+
 
         if p.pos.y < -(Npaddles / 2) * pdy:  # move a paddle from the bottom to the top
             p.pos.y += (1 + Npaddles + 1) * pdy
             p.axis = vector(-sin(p.theta), 0, -cos(p.theta))
             p.theta = theta0
             p.omega = 0
+            b.pos.y += (1 + Npaddles + 1) * pdy
     if not collision:
         displace_demon(dt)
         update_omega(demon)
     t += dt
+
     
 # to be completed
-# the bits need to move down too
-# error in crossing barVpi location
+# logical error in crossing barVpi location
