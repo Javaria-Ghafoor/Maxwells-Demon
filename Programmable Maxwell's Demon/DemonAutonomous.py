@@ -378,3 +378,7 @@ while True:
         displace_demon(dt)
         update_omega(demon)
     t += dt
+    
+# to be completed
+# the bits need to move down too
+# error in crossing barVpi location
