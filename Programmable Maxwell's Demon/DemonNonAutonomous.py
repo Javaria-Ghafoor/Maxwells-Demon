@@ -176,7 +176,7 @@ rodVpi = cylinder(pos=vector(0, -1.5 * H, 0.55 * R), radius=Dia_axle / 2, axis=v
 
 def true_angle(a):  # convert an angle to be between 0 and 2pi
     a %= 2 * pi
-    if a < 0:
+    while a < 0:
         a += 2 * pi
     Demon_theta.append(a)
     return a
@@ -185,21 +185,37 @@ def true_angle(a):  # convert an angle to be between 0 and 2pi
 dt = 0.01
 
 
-def displace_paddle(paddle, deltat):
+def displace_paddle(paddle, deltat, check=-1):
     dtheta = paddle.omega * deltat
     if dtheta == 0:
         return
     thetai = paddle.theta
     thetaf = thetai + dtheta
-    if thetaf >= 2 * pi or thetaf <= 0:
-        # if out of range?
+    if check == 0 and (-H < paddle.pos.y < H):
+        if thetaf >= 2 * pi or thetaf <= 0:
+            # if attempting crossing barVo
+            paddle.omega = -paddle.omega  # direction swap
+            if dtheta > 0:
+                thetaf = 2 * pi - (thetaf - 2 * pi)
+            else:
+                thetaf = -thetaf
+    elif check == 1 and (-H < paddle.pos.y < H):
+        if thetai <= pi <= thetaf or thetaf <= pi <= thetai:
+            # if attempting crossing barVpi
+            paddle.omega = -paddle.omega  # direction swap
+            if dtheta > 0:
+                thetaf = pi - (thetaf - pi)
+            else:
+                thetaf = pi + (pi - thetaf)
+    if thetaf >= 2 * pi or thetaf <= 0 and not (-H < paddle.pos.y < H):
+        # if attempting crossing barVo
         paddle.omega = -paddle.omega        # direction swap
         if dtheta > 0:
             thetaf = 2 * pi - (thetaf - 2 * pi)
         else:
             thetaf = -thetaf
     elif (thetai <= pi <= thetaf or thetaf <= pi <= thetai) and not (-H < paddle.pos.y < H):
-        # if collision with rods
+        # if attempting crossing barVpi
         paddle.omega = -paddle.omega        # direction swap
         if dtheta > 0:
             thetaf = pi - (thetaf - pi)
@@ -265,12 +281,14 @@ for y in arange(1.5 * H, maxpaddley + pdy / 2, pdy):  # create a set of paddles 
     count += 1
     P = make_paddle()
     P.pos.y = y
-    P.theta = theta0
     P.omega = omega0
     if num == False:
-        P.rotate(angle=-P.theta, axis=vector(0, 1, 0), origin=vector(0, 0, 0))
+        P.theta0 = theta0 + pi
+        P.theta = theta0 + pi
     elif num == True:
-        P.rotate(angle=P.theta, axis=vector(0, 1, 0), origin=vector(0, 0, 0))
+        P.theta0 = theta0
+        P.theta = theta0
+    P.rotate(angle=P.theta, axis=vector(0, 1, 0), origin=vector(0, 0, 0))
     paddles.append(P)
 
 
@@ -294,38 +312,60 @@ def update_omega(obj):
 dy = H / 200  # how much to drop the axle for each iteration
 t = 0
 
+
 while True:
     rate(50)  # clamp to no more than 50 iterations per second
     collision = False
     for p in paddles:
         update = True
-        if -H < p.pos.y < H:                 # neeed to introduce hexagonal nos, memory location track
-            print(p)
-            if 0 < p.theta < pi:
+        if -H < p.pos.y < H:
+            if 0 < p.theta0 < pi:
+                print('here1')
                 rodVo.pos.y = 1.5 * H
                 rodVpi.pos.y = - 1.5 * H
-            elif pi < p.theta < 2 * pi:
+                check = 1
+            else:
+                print('here2')
                 rodVpi.pos.y = 1.5 * H
                 rodVo.pos.y = - 1.5 * H
+                check = 0
+                        # need to introduce hexagonal nos, memory location track
+            print('here3')
             if p.omega != demon.omega:
-                deltat = (true_angle(demon.theta) - p.theta) / (p.omega - demon.omega)
-                if 0 <= deltat <= dt:  # there will be a collision  # need to improve collision condition
+                deltat1 = (true_angle(demon.theta) - true_angle(p.theta)) / (p.omega - demon.omega)
+                deltat2 = (true_angle(pi + demon.theta) - true_angle(p.theta)) / (p.omega - demon.omega)
+                if 0 <= deltat1 <= dt:  # there will be a collision  # need to improve collision condition
                     collision = True
-                    displace_demon(deltat)
+                    displace_demon(deltat1)
                     omega = demon.omega  # swap angular velocities
                     demon.omega = p.omega
-                    displace_demon(dt - deltat)
+                    displace_demon(dt - deltat1)
                     update_omega(demon)
-                    displace_paddle(p, deltat)
+                    displace_paddle(p, deltat1, check)
                     p.omega = omega
-                    displace_paddle(p, dt - deltat)
+                    displace_paddle(p, dt - deltat1, check)
                     update_omega(p)
                     update = False
+                    check = -1
+                elif 0 <= deltat2 <= dt:
+                    collision = True
+                    displace_demon(deltat2)
+                    omega = demon.omega  # swap angular velocities
+                    demon.omega = p.omega
+                    displace_demon(dt - deltat2)
+                    update_omega(demon)
+                    displace_paddle(p, deltat2, check)
+                    p.omega = omega
+                    displace_paddle(p, dt - deltat2, check)
+                    update_omega(p)
+                    update = False
+
+        print('here4')
         if update:
             displace_paddle(p, dt)
             update_omega(p)
+            p.pos.y -= dy
 
-        p.pos.y -= dy
         if p.pos.y < -(Npaddles / 2) * pdy:  # move a paddle from the bottom to the top
             p.pos.y += (1 + Npaddles + 1) * pdy
             p.axis = vector(-sin(p.theta), 0, -cos(p.theta))
@@ -337,3 +377,4 @@ while True:
     t += dt
 
 # to be completed
+# logical error regarding crossing barVpi to be corrected
